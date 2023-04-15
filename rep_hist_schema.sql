@@ -14,10 +14,10 @@ CREATE TABLE `replica_history` (
     `hostname` VARCHAR(128) NULL DEFAULT NULL,
     `mariadbd_cpu_pct` DECIMAL(5,2) NULL DEFAULT NULL,
     `seconds_behind_master` int,
-    `gtid_binlog_pos` VARCHAR(32) NOT NULL,
-    `gtid_current_pos` VARCHAR(32) NOT NULL,
-    `gtid_slave_pos` VARCHAR(32) NOT NULL,
-	`gtid_io_pos` VARCHAR(32) NOT NULL,
+    `gtid_binlog_pos` VARCHAR(200) NOT NULL,
+    `gtid_current_pos` VARCHAR(200) NOT NULL,
+    `gtid_slave_pos` VARCHAR(200) NOT NULL,
+    `gtid_io_pos` VARCHAR(200) NOT NULL,
     `slave_sql_running_state` VARCHAR(500),
     PRIMARY KEY (`id`)
 )
