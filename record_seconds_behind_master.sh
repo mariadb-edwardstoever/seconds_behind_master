@@ -35,13 +35,12 @@ CSV_FILE=/tmp/$(hostname)_seconds_behind_master.csv
 STATUS=$(mariadb -Ae "show slave status\G"| grep -i -E '(Slave_SQL_Running_State|Seconds_Behind_Master|Gtid_IO_Pos)')
 HANDLER_READ_RND_NEXT=$(mariadb -ABNe "select variable_value from information_schema.GLOBAL_STATUS where variable_name='Handler_read_rnd_next';")
 
-Handler_read_rnd_nex
 # parsing STATUS:
 BEHIND_MASTER=$(printf "$STATUS\n" | grep -i Seconds_Behind_Master | awk '{print $2}')
 
 # THE NEXT THREE MUST BE SEPARATE TO ACCOUNT FOR POSSIBLE NULL VALUES
 GTID_IO_POS=$(printf "$STATUS\n" | grep -i Gtid_IO_Pos | awk '{print $2}')
-RUNNING_STATE=$(printf "$STATUS\n" | grep -i Slave_SQL_Running_State | sed 's/.*\://')
+RUNNING_STATE=$(printf "$STATUS\n" | grep -i Slave_SQL_Running_State | sed 's/.*\://' |xargs)
 MARIADB_TOP_CPU_PCT=$(top -bn1 -p $(pidof mariadbd) | tail -1 | awk '{print $9}')
 
 if [ ! $CSV_OUTPUT ]; then

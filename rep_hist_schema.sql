@@ -19,6 +19,7 @@ CREATE TABLE `replica_history` (
     `gtid_slave_pos` VARCHAR(200) NOT NULL,
     `gtid_io_pos` VARCHAR(200) NOT NULL,
     `slave_sql_running_state` VARCHAR(500),
+    `handler_read_rnd_next` bigint,
     PRIMARY KEY (`id`)
 )
 COLLATE='utf8mb4_general_ci'
