@@ -3,7 +3,7 @@
 # Updated January 2025
 # Ref Support Ticket 210602
 # In most cases, this script should be run as root, 
-# however it can probably be adjusted to run by a different system user
+# however it may be possible to adjust it to run by a different system user
 
 unset RECORD_PROCESSLIST CSV_OUTPUT
 
@@ -32,7 +32,7 @@ THRESHOLD_RECORD_PROCESSIST=5
 ######################################    CSV OR TABLE OUTPUT    ######################################
 #######################################################################################################
 # IF YOU UNCOMMENT THE NEXT LINE, "CSV_OUTPUT=TRUE" THE OUTPUT WILL BE SAVED IN EXTERNAL CSV FILES. 
-# CSV_OUTPUT=TRUE
+ CSV_OUTPUT=TRUE
 
 OUTDIR=/tmp/rep_hist
 
@@ -125,7 +125,7 @@ else
   printf "$ID,\"$(date "+%Y-%m-%d %H:%M:%S")\",\"$(hostname)\",\"$MARIADB_TOP_CPU_PCT\",\"$BEHIND_MASTER\",\"$GTID_BINLOG_POS\",\"$GTID_CURRENT_POS\",\"$GTID_SLAVE_POS\",\"$GTID_IO_POS\",\"$RUNNING_STATE\",$HANDLER_READ_RND_NEXT\n" >> $CSV_FILE
 
   if [  $RECORD_PROCESSLIST ]; then
-    SQL="select now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
+    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
     ${MARIADB_COMMAND} -ABNe "$SQL"
   fi 
 fi
