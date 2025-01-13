@@ -32,7 +32,7 @@ THRESHOLD_RECORD_PROCESSIST=5
 ######################################    CSV OR TABLE OUTPUT    ######################################
 #######################################################################################################
 # IF YOU UNCOMMENT THE NEXT LINE, "CSV_OUTPUT=TRUE" THE OUTPUT WILL BE SAVED IN EXTERNAL CSV FILES. 
- CSV_OUTPUT=TRUE
+# CSV_OUTPUT=TRUE
 
 OUTDIR=/tmp/rep_hist
 
