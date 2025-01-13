@@ -8,7 +8,10 @@ The default is to save output to database tables. If saving to database tables i
 ```
 mariadb < rep_hist_schema.sql
 ```
-If you prefer to save to csv files, uncomment the line `CSV_OUTPUT=TRUE`.
+
+The commands in this project are to be run on slave and therefore all SQL scripts are preceeded with `SET SESSION sql_log_bin = 0;`. This will turn off binary logging and ensure that the changes do not break replication by altering the gtid. 
+
+You can avoid saving to tables by saving to csv files. *If you prefer to save to csv files*, uncomment the line `CSV_OUTPUT=TRUE`.
 
 ### Crontab
 Run the script from crontab on the host of the slave that you want to monitor. For example, every minute looks like this:
