@@ -25,15 +25,3 @@ CREATE TABLE `replica_history` (
 COLLATE='utf8mb4_general_ci'
 ENGINE=InnoDB;
 
-drop table if exists `processlist_history`;
-CREATE TABLE `processlist_history` (
-  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `tick` timestamp NOT NULL DEFAULT current_timestamp(),
-  `hostname` VARCHAR(128) NULL DEFAULT NULL,
-  `db` varchar(64) DEFAULT NULL,
-  `command` varchar(16) DEFAULT NULL,
-  `state` varchar(64) DEFAULT NULL,
-  `info` longtext NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
