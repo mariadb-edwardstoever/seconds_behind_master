@@ -118,9 +118,9 @@ else
 
   ID=$(( $ID + 1 ))
 
-  GTID_BINLOG_POS=$(mariadb -ABNe "select @@gtid_binlog_pos;")
-  GTID_CURRENT_POS=$(mariadb -ABNe "select @@gtid_current_pos;")
-  GTID_SLAVE_POS=$(mariadb -ABNe "select @@gtid_slave_pos;")
+  GTID_BINLOG_POS=$(${MARIADB_COMMAND} -ABNe "select @@gtid_binlog_pos;")
+  GTID_CURRENT_POS=$(${MARIADB_COMMAND} -ABNe "select @@gtid_current_pos;")
+  GTID_SLAVE_POS=$(${MARIADB_COMMAND} -ABNe "select @@gtid_slave_pos;")
 
   printf "$ID,\"$(date "+%Y-%m-%d %H:%M:%S")\",\"$(hostname)\",\"$MARIADB_TOP_CPU_PCT\",\"$BEHIND_MASTER\",\"$GTID_BINLOG_POS\",\"$GTID_CURRENT_POS\",\"$GTID_SLAVE_POS\",\"$GTID_IO_POS\",\"$RUNNING_STATE\",$HANDLER_READ_RND_NEXT\n" >> $CSV_FILE
 
