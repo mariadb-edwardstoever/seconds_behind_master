@@ -38,11 +38,11 @@ You can avoid creating the tables and saving to the tables by saving to csv file
 ### Crontab
 Run the script from crontab on the host of the slave that you want to monitor. For example, every minute looks like this:
 ```
-* * * * * /root/seconds_behind_master/record_seconds_behind_master.sh 2>/tmp/seconds_behind_master_crontab.log
+* * * * * /root/seconds_behind_master/record_seconds_behind_master.sh 2>>/tmp/seconds_behind_master_crontab.log
 ```
 Or if you prefer, every other minute looks like this:
 ```
-*/2 * * * * /root/seconds_behind_master/record_seconds_behind_master.sh 2>/tmp/seconds_behind_master_crontab.log
+*/2 * * * * /root/seconds_behind_master/record_seconds_behind_master.sh 2>>/tmp/seconds_behind_master_crontab.log
 ```
 
 ### Sharing results with Mariadb Support
