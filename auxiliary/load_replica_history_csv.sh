@@ -2,17 +2,16 @@
 # Created by Edward Stoever for MariaDB Support
 # Use as a template to get data from CSV file into a table so it can be selected.
 
-echo "Edit this file before running."; exit 0;
+echo "Edit this file before running."; exit 0; # Edit the file changing the value for CSV_FILE, remove this line.
 
 CSV_FILE=/tmp/hostname_seconds_behind_master.csv
 
 SQL="SET SESSION sql_log_bin = 0;
 
-CREATE SCHEMA if not exists rep_hist;
-use rep_hist;
+CREATE SCHEMA IF NOT EXISTS rep_hist;
+USE rep_hist;
 
-drop table if exists replica_history;
-CREATE TABLE replica_history (
+CREATE TABLE IF NOT EXISTS replica_history (
     id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
     tick TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     hostname VARCHAR(128) NULL DEFAULT NULL,

@@ -1,0 +1,8 @@
+# processlist
+[mariadb-import]
+fields-optionally-enclosed-by = '"'
+fields-terminated-by = '\t'
+lines-terminated-by = '\n'
+fields-escaped-by = '\\'
+columns = 'runid,tick,hostname,db,command,state,info'
+
