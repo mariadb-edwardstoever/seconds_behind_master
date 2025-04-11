@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script by Edward Stoever for MariaDB Support
-# Updated January 2025
-# Ref Support Ticket 210602
+# Updated April 2025
+# Ref Support Ticket 210602, 212358 (added Relay_Log_File, Relay_Log_Pos)
 # In most cases, this script should be run as root, 
 # however it may be possible to adjust it to run by a different system user
 
@@ -65,6 +65,8 @@ PROCESS_LIST_FILE=${OUTDIR}/$(hostname)_processlist_$(date +%s).csv;
 #    `gtid_io_pos` VARCHAR(200) NOT NULL,
 #    `slave_sql_running_state` VARCHAR(500),
 #    `handler_read_rnd_next` bigint,
+#    `relay_log_file` VARCHAR(200) DEFAULT NULL,
+#    `relay_log_pos` VARCHAR(200) DEFAULT NULL,
 #    PRIMARY KEY (`id`)
 # )
 # COLLATE='utf8mb4_general_ci'
@@ -90,13 +92,16 @@ if [ $MARIADB_USER ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -u$MARIADB_US
 if [ $MARIADB_PASSWORD ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -p$MARIADB_PASSWORD); fi
 if [ $MARIADB_HOST ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -h$MARIADB_HOST); fi
 if [ $MARIABD_PORT ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -P$MARIADB_PORT); fi
-STATUS=$(${MARIADB_COMMAND} -Ae "show slave status\G"| grep -i -E '(Slave_SQL_Running_State|Seconds_Behind_Master|Gtid_IO_Pos)')
+STATUS=$(${MARIADB_COMMAND} -Ae "show slave status\G"| grep -i -E '(Slave_SQL_Running_State|Seconds_Behind_Master|Gtid_IO_Pos|Relay_Log_File|Relay_Log_Pos)')
 HANDLER_READ_RND_NEXT=$(${MARIADB_COMMAND} -ABNe "select variable_value from information_schema.GLOBAL_STATUS where variable_name='Handler_read_rnd_next';")
 
-# parsing STATUS:
+# parsing:
 BEHIND_MASTER=$(printf "$STATUS\n" | grep -i Seconds_Behind_Master | awk '{print $2}')
+if [ ! $BEHIND_MASTER ]; then BEHIND_MASTER=0; fi
+RELAY_LOG_FILE=$(printf "$STATUS\n" | grep -i Relay_Log_File | awk '{print $2}')
+RELAY_LOG_POS=$(printf "$STATUS\n" | grep -i Relay_Log_Pos | awk '{print $2}')
 
-if (($BEHIND_MASTER >= $THRESHOLD_RECORD_PROCESSIST)) then RECORD_PROCESSLIST=TRUE; fi
+if (($BEHIND_MASTER >= $THRESHOLD_RECORD_PROCESSIST)); then RECORD_PROCESSLIST=TRUE; fi
 
 # THE NEXT THREE MUST BE SEPARATE TO ACCOUNT FOR POSSIBLE NULL VALUES
 GTID_IO_POS=$(printf "$STATUS\n" | grep -i Gtid_IO_Pos | awk '{print $2}')
@@ -104,7 +109,7 @@ RUNNING_STATE=$(printf "$STATUS\n" | grep -i Slave_SQL_Running_State | sed 's/.*
 MARIADB_TOP_CPU_PCT=$(top -bn1 -p $(pidof mariadbd) | tail -1 | awk '{print $9}')
 
 if [ ! $CSV_OUTPUT ]; then
-  SQL="SET SESSION sql_log_bin = 0; INSERT INTO rep_hist.replica_history (hostname, mariadbd_cpu_pct, seconds_behind_master, gtid_binlog_pos, gtid_current_pos, gtid_slave_pos, gtid_io_pos, slave_sql_running_state,handler_read_rnd_next) VALUES (@@hostname, $MARIADB_TOP_CPU_PCT, $BEHIND_MASTER, @@gtid_binlog_pos, @@gtid_current_pos, @@gtid_slave_pos,'$GTID_IO_POS','$RUNNING_STATE',$HANDLER_READ_RND_NEXT);"
+  SQL="SET SESSION sql_log_bin = 0; INSERT INTO rep_hist.replica_history (hostname, mariadbd_cpu_pct, seconds_behind_master, gtid_binlog_pos, gtid_current_pos, gtid_slave_pos, gtid_io_pos, slave_sql_running_state,handler_read_rnd_next,relay_log_file,relay_log_pos) VALUES (@@hostname, $MARIADB_TOP_CPU_PCT, $BEHIND_MASTER, @@gtid_binlog_pos, @@gtid_current_pos, @@gtid_slave_pos,'$GTID_IO_POS','$RUNNING_STATE',$HANDLER_READ_RND_NEXT,'$RELAY_LOG_FILE',$RELAY_LOG_POS);"
   if [  $RECORD_PROCESSLIST ]; then
     SQL=$SQL" insert into rep_hist.processlist_history (tick,hostname,db,command,state,info) select now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null;"
   fi
@@ -122,7 +127,10 @@ else
   GTID_CURRENT_POS=$(${MARIADB_COMMAND} -ABNe "select @@gtid_current_pos;")
   GTID_SLAVE_POS=$(${MARIADB_COMMAND} -ABNe "select @@gtid_slave_pos;")
 
-  printf "$ID,\"$(date "+%Y-%m-%d %H:%M:%S")\",\"$(hostname)\",\"$MARIADB_TOP_CPU_PCT\",\"$BEHIND_MASTER\",\"$GTID_BINLOG_POS\",\"$GTID_CURRENT_POS\",\"$GTID_SLAVE_POS\",\"$GTID_IO_POS\",\"$RUNNING_STATE\",$HANDLER_READ_RND_NEXT\n" >> $CSV_FILE
+
+
+
+  printf "$ID,\"$(date "+%Y-%m-%d %H:%M:%S")\",\"$(hostname)\",\"$MARIADB_TOP_CPU_PCT\",\"$BEHIND_MASTER\",\"$GTID_BINLOG_POS\",\"$GTID_CURRENT_POS\",\"$GTID_SLAVE_POS\",\"$GTID_IO_POS\",\"$RUNNING_STATE\",$HANDLER_READ_RND_NEXT,\"$RELAY_LOG_FILE\",$RELAY_LOG_POS\n" >> $CSV_FILE
 
   if [  $RECORD_PROCESSLIST ]; then
     SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
