@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script by Edward Stoever for MariaDB Support
-# Updated April 2025
+# Updated May 2025
 # Ref Support Ticket 210602, 212358 (added Relay_Log_File, Relay_Log_Pos)
 # In most cases, this script should be run as root, 
 # however it may be possible to adjust it to run by a different system user
@@ -11,17 +11,18 @@ unset RECORD_PROCESSLIST CSV_OUTPUT
 #######################################################################################################
 # DEFINE A SECONDS BEHIND MASTER THRESHOLD TO RECORD PROCESSLIST. 
 # To always record processlist, set THRESHOLD_RECORD_PROCESSIST to 0.
-THRESHOLD_RECORD_PROCESSIST=0
+THRESHOLD_RECORD_PROCESSIST=5
 
 ####################################    COLLECTIONS PER MINUTE    #####################################
 #######################################################################################################
-# How many times to run this each minute? Default is 1. Any value from 0 to 90 is acceptable.
+# PER_MIN determines how many times to run this in the 1 minute from the start of the script. 
+# A values from 0 to 90 is acceptable. 60 is recommended limit.
 # 2 = every 30 seconds
 # 4 = every 15 seconds
 # 6 = every 10 seconds
 # 10 = every 6 seconds
 # 60 is probably the highest you want to go!
-PER_MIN=6
+PER_MIN=1
 
 #######################################################################################################
 #######################################################################################################
@@ -42,9 +43,12 @@ PER_MIN=6
 
 ######################################    CSV OR TABLE OUTPUT    ######################################
 #######################################################################################################
-# IF YOU UNCOMMENT THE NEXT LINE, "CSV_OUTPUT=TRUE" THE OUTPUT WILL BE SAVED IN EXTERNAL CSV FILES. 
+# IF YOU UNCOMMENT THE LINE "CSV_OUTPUT=TRUE" THE OUTPUT WILL BE SAVED IN EXTERNAL CSV FILES. 
+# IF YOU SAVE TO EXTERNAL FILES, YOU WILL NOT NEED TO CREATE DATABASE TABLES. 
+# EXTERNAL FILES WILL SAVE IN $OUTDIR.
 # CSV_OUTPUT=TRUE
 OUTDIR=/tmp/rep_hist
+
 # IF NOT OUPUTTING TO EXTERNAL CSV FILE, THIS SCRIPT REQUIRES DATABASE OBJECTS. 
 # SEE INCLUDED SCRIPT rep_hist_schema.sql
 
@@ -59,7 +63,8 @@ CSV_FILE=${OUTDIR}/$(hostname)_seconds_behind_master.csv;
 #######################################################################################################
 #######################################################################################################
 
-MARIADB_COMMAND=$(echo mariadb)
+MARIADB_COMMAND=$(which mariadb)
+if [ ! "$MARIADB_COMMAND" ]; then echo "No mariadb client is installed!" >&2; exit 1; fi
 if [ $MARIADB_USER ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -u$MARIADB_USER); fi
 if [ $MARIADB_PASSWORD ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -p$MARIADB_PASSWORD); fi
 if [ $MARIADB_HOST ]; then MARIADB_COMMAND=$(echo $MARIADB_COMMAND -h$MARIADB_HOST); fi
@@ -108,12 +113,11 @@ if [ ! "$GTID_SLAVE_POS" ]; then GTID_SLAVE_POS='unknown'; fi
 if (($BEHIND_MASTER >= $THRESHOLD_RECORD_PROCESSIST)); then RECORD_PROCESSLIST=TRUE; fi
 
 if [ ! $CSV_OUTPUT ]; then
-  echo $LOOPED
+
   SQL="SET SESSION sql_log_bin = 0; INSERT INTO rep_hist.replica_history (hostname, mariadbd_cpu_pct, seconds_behind_master, gtid_binlog_pos, gtid_current_pos, gtid_slave_pos, gtid_io_pos, slave_sql_running_state,handler_read_rnd_next,relay_log_file,relay_log_pos,threads_created,threads_connected,threads_running) VALUES (@@hostname, $MARIADB_TOP_CPU_PCT, $BEHIND_MASTER, @@gtid_binlog_pos, @@gtid_current_pos, @@gtid_slave_pos,'$GTID_IO_POS','$RUNNING_STATE',$HANDLER_READ_RND_NEXT,'$RELAY_LOG_FILE',$RELAY_LOG_POS,$THREADS_CREATED,$THREADS_CONNECTED,$THREADS_RUNNING);"
   if [  $RECORD_PROCESSLIST ]; then
-    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker');"
+    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump');"
   fi
-  echo "$SQL";
   ${MARIADB_COMMAND} -ABNe "$SQL"
 else
   if [ -f $CSV_FILE ]; then
@@ -129,7 +133,7 @@ else
 
 PROCESS_LIST_FILE=${OUTDIR}/$(hostname)_processlist_$(date +%s)_$(printf "%03d\n" "${LOOPED}").csv;
   if [  $RECORD_PROCESSLIST ]; then
-    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker') INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
+    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump') INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
     ${MARIADB_COMMAND} -ABNe "$SQL"
   fi 
 fi
