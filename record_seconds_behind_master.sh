@@ -16,8 +16,12 @@ THRESHOLD_RECORD_PROCESSIST=0
 ####################################    COLLECTIONS PER MINUTE    #####################################
 #######################################################################################################
 # How many times to run this each minute? Default is 1. Any value from 0 to 90 is acceptable.
+# 2 = every 30 seconds
+# 4 = every 15 seconds
+# 6 = every 10 seconds
+# 10 = every 6 seconds
 # 60 is probably the highest you want to go!
-PER_MIN=60
+PER_MIN=6
 
 #######################################################################################################
 #######################################################################################################
@@ -39,7 +43,7 @@ PER_MIN=60
 ######################################    CSV OR TABLE OUTPUT    ######################################
 #######################################################################################################
 # IF YOU UNCOMMENT THE NEXT LINE, "CSV_OUTPUT=TRUE" THE OUTPUT WILL BE SAVED IN EXTERNAL CSV FILES. 
-CSV_OUTPUT=TRUE
+# CSV_OUTPUT=TRUE
 OUTDIR=/tmp/rep_hist
 # IF NOT OUPUTTING TO EXTERNAL CSV FILE, THIS SCRIPT REQUIRES DATABASE OBJECTS. 
 # SEE INCLUDED SCRIPT rep_hist_schema.sql
@@ -77,7 +81,7 @@ GLOBAL_STATUS=$(${MARIADB_COMMAND} -ABNe "select * from information_schema.GLOBA
 BEHIND_MASTER=$(printf "$SLAVE_STATUS\n" | grep -i Seconds_Behind_Master | awk '{print $2}')
 if [ ! $BEHIND_MASTER ]; then BEHIND_MASTER=0; fi
 RELAY_LOG_FILE=$(printf "$SLAVE_STATUS\n" | grep -i Relay_Log_File | awk '{print $2}')
-if [ ! $RELAY_LOG_FILE ]; then RELAY_LOG_FILE='unknown'; fi
+if [ ! "$RELAY_LOG_FILE" ]; then RELAY_LOG_FILE='unknown'; fi
 RELAY_LOG_POS=$(printf "$SLAVE_STATUS\n" | grep -i Relay_Log_Pos | awk '{print $2}')
 if [ ! $RELAY_LOG_POS ]; then RELAY_LOG_POS='0'; fi
 HANDLER_READ_RND_NEXT=$(printf "$GLOBAL_STATUS\n" | grep -i handler_read_rnd_next | awk '{print $2}')
@@ -89,25 +93,27 @@ if [ ! $THREADS_CONNECTED ]; then THREADS_CONNECTED='0'; fi
 THREADS_RUNNING=$(printf "$GLOBAL_STATUS\n" | grep -i threads_running | awk '{print $2}')
 if [ ! $THREADS_RUNNING ]; then THREADS_RUNNING='0'; fi
 GTID_IO_POS=$(printf "$SLAVE_STATUS\n" | grep -i Gtid_IO_Pos | awk '{print $2}')
-if [ ! $GTID_IO_POS ]; then GTID_IO_POS='unknown'; fi
+if [ ! "$GTID_IO_POS" ]; then GTID_IO_POS='unknown'; fi
 RUNNING_STATE=$(printf "$SLAVE_STATUS\n" | grep -i Slave_SQL_Running_State | sed 's/.*\://' |xargs)
-if [ ! $RUNNING_STATE ]; then RUNNING_STATE='unknown'; fi
+if [ ! "$RUNNING_STATE" ]; then RUNNING_STATE='unknown'; fi
 MARIADB_TOP_CPU_PCT=$(top -bn1 -p $(pidof mariadbd) | tail -1 | awk '{print $9}')
 if [ ! $MARIADB_TOP_CPU_PCT ]; then MARIADB_TOP_CPU_PCT='0'; fi
 GTID_BINLOG_POS=$(printf "$GLOBAL_STATUS\n" | grep -i gtid_binlog_pos | awk '{print $2}')
-if [ ! $GTID_BINLOG_POS ]; then GTID_BINLOG_POS='unknown'; fi
+if [ ! "$GTID_BINLOG_POS" ]; then GTID_BINLOG_POS='unknown'; fi
 GTID_CURRENT_POS=$(printf "$GLOBAL_STATUS\n" | grep -i gtid_current_pos | awk '{print $2}')
-if [ ! $GTID_CURRENT_POS ]; then GTID_CURRENT_POS='unknown'; fi
+if [ ! "$GTID_CURRENT_POS" ]; then GTID_CURRENT_POS='unknown'; fi
 GTID_SLAVE_POS=$(printf "$GLOBAL_STATUS\n" | grep -i gtid_slave_pos | awk '{print $2}')
-if [ ! $GTID_SLAVE_POS ]; then GTID_SLAVE_POS='unknown'; fi
+if [ ! "$GTID_SLAVE_POS" ]; then GTID_SLAVE_POS='unknown'; fi
 
 if (($BEHIND_MASTER >= $THRESHOLD_RECORD_PROCESSIST)); then RECORD_PROCESSLIST=TRUE; fi
 
 if [ ! $CSV_OUTPUT ]; then
+  echo $LOOPED
   SQL="SET SESSION sql_log_bin = 0; INSERT INTO rep_hist.replica_history (hostname, mariadbd_cpu_pct, seconds_behind_master, gtid_binlog_pos, gtid_current_pos, gtid_slave_pos, gtid_io_pos, slave_sql_running_state,handler_read_rnd_next,relay_log_file,relay_log_pos,threads_created,threads_connected,threads_running) VALUES (@@hostname, $MARIADB_TOP_CPU_PCT, $BEHIND_MASTER, @@gtid_binlog_pos, @@gtid_current_pos, @@gtid_slave_pos,'$GTID_IO_POS','$RUNNING_STATE',$HANDLER_READ_RND_NEXT,'$RELAY_LOG_FILE',$RELAY_LOG_POS,$THREADS_CREATED,$THREADS_CONNECTED,$THREADS_RUNNING);"
   if [  $RECORD_PROCESSLIST ]; then
-    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null;"
+    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker');"
   fi
+  echo "$SQL";
   ${MARIADB_COMMAND} -ABNe "$SQL"
 else
   if [ -f $CSV_FILE ]; then
@@ -123,7 +129,7 @@ else
 
 PROCESS_LIST_FILE=${OUTDIR}/$(hostname)_processlist_$(date +%s)_$(printf "%03d\n" "${LOOPED}").csv;
   if [  $RECORD_PROCESSLIST ]; then
-    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where INFO is not null INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
+    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker') INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
     ${MARIADB_COMMAND} -ABNe "$SQL"
   fi 
 fi

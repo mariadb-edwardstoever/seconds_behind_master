@@ -10,14 +10,14 @@ SQL="SET SESSION sql_log_bin = 0;
 CREATE SCHEMA IF NOT EXISTS rep_hist;
 USE rep_hist;
 
-CREATE TABLE processlist_history (
+CREATE TABLE IF NOT EXISTS processlist_history (
   rh_id int(11) DEFAULT NULL,
   tick timestamp NOT NULL DEFAULT current_timestamp(),
   hostname varchar(128) DEFAULT NULL,
   db varchar(64) DEFAULT NULL,
   command varchar(16) DEFAULT NULL,
   state varchar(64) DEFAULT NULL,
-  info longtext NOT NULL
+  info longtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
 
 

@@ -36,5 +36,5 @@ CREATE TABLE `processlist_history` (
   `db` varchar(64) DEFAULT NULL,
   `command` varchar(16) DEFAULT NULL,
   `state` varchar(64) DEFAULT NULL,
-  `info` longtext NOT NULL
+  `info` longtext DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
