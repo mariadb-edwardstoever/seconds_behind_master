@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS processlist_history (
   rh_id int(11) DEFAULT NULL,
   tick timestamp NOT NULL DEFAULT current_timestamp(),
   hostname varchar(128) DEFAULT NULL,
+  session_id bigint(20) DEFAULT NULL,
+  user varchar(128) DEFAULT NULL,
+  host varchar(64) DEFAULT NULL,
+  query_id bigint(20) DEFAULT NULL,
   db varchar(64) DEFAULT NULL,
   command varchar(16) DEFAULT NULL,
   state varchar(64) DEFAULT NULL,
@@ -30,7 +34,7 @@ mariadb -ABNe "$SQL";
 # fields-terminated-by = '\t'
 # lines-terminated-by = '\n'
 # fields-escaped-by = '\\'
-# columns = 'rh_id,tick,hostname,db,command,state,info'
+# columns = 'rh_id,tick,hostname,session_id,user,host,query_id,db,command,state,info'
 
 
 cp processlist.tsv.cnf /tmp/

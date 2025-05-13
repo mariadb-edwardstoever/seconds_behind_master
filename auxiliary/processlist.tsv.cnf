@@ -4,5 +4,4 @@ fields-optionally-enclosed-by = '"'
 fields-terminated-by = '\t'
 lines-terminated-by = '\n'
 fields-escaped-by = '\\'
-columns = 'rh_id,tick,hostname,db,command,state,info'
-
+columns = 'rh_id,tick,hostname,session_id,user,host,query_id,db,command,state,info'

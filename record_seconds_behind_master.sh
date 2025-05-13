@@ -110,13 +110,15 @@ if [ ! "$GTID_CURRENT_POS" ]; then GTID_CURRENT_POS='unknown'; fi
 GTID_SLAVE_POS=$(printf "$GLOBAL_STATUS\n" | grep -i gtid_slave_pos | awk '{print $2}')
 if [ ! "$GTID_SLAVE_POS" ]; then GTID_SLAVE_POS='unknown'; fi
 
+RECORD_PROCESSLIST=FALSE;
 if (($BEHIND_MASTER >= $THRESHOLD_RECORD_PROCESSIST)); then RECORD_PROCESSLIST=TRUE; fi
 
 if [ ! $CSV_OUTPUT ]; then
 
+
   SQL="SET SESSION sql_log_bin = 0; INSERT INTO rep_hist.replica_history (hostname, mariadbd_cpu_pct, seconds_behind_master, gtid_binlog_pos, gtid_current_pos, gtid_slave_pos, gtid_io_pos, slave_sql_running_state,handler_read_rnd_next,relay_log_file,relay_log_pos,threads_created,threads_connected,threads_running) VALUES (@@hostname, $MARIADB_TOP_CPU_PCT, $BEHIND_MASTER, @@gtid_binlog_pos, @@gtid_current_pos, @@gtid_slave_pos,'$GTID_IO_POS','$RUNNING_STATE',$HANDLER_READ_RND_NEXT,'$RELAY_LOG_FILE',$RELAY_LOG_POS,$THREADS_CREATED,$THREADS_CONNECTED,$THREADS_RUNNING);"
   if [  $RECORD_PROCESSLIST ]; then
-    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump');"
+    SQL=$SQL" insert into rep_hist.processlist_history (rh_id,tick,hostname,session_id,user,host,query_id,db,command,state,info) select LAST_INSERT_ID(), now(), @@HOSTNAME, ID, USER, HOST, QUERY_ID, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump');"
   fi
   ${MARIADB_COMMAND} -ABNe "$SQL"
 else
@@ -133,7 +135,7 @@ else
 
 PROCESS_LIST_FILE=${OUTDIR}/$(hostname)_processlist_$(date +%s)_$(printf "%03d\n" "${LOOPED}").csv;
   if [  $RECORD_PROCESSLIST ]; then
-    SQL="select $ID, now(), @@HOSTNAME, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump') INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
+    SQL="select $ID, now(), @@HOSTNAME, ID, USER, HOST, QUERY_ID, DB, COMMAND, STATE, INFO from information_schema.processlist where (ID !=connection_id() AND INFO is not null) OR Command in ('Slave_IO','Slave_SQL','Slave_worker','Binlog Dump') INTO OUTFILE '$PROCESS_LIST_FILE' COLUMNS OPTIONALLY ENCLOSED BY '\"';"
     ${MARIADB_COMMAND} -ABNe "$SQL"
   fi 
 fi
